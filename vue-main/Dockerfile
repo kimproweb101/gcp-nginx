@@ -1,17 +1,18 @@
-# 1. Node.js 환경 (개발과 빌드 모두 여기서 해결)
-FROM node:24-alpine
+# 1. 빌드 스테이지 (Node.js 환경에서 Vue 코드를 HTML/CSS/JS로 컴파일)
+FROM node:24-alpine AS build-stage
 WORKDIR /app
-
-# pnpm 설치
 RUN corepack enable pnpm
-
-# 의존성 설치
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install
-
-# 소스 복사
 COPY . .
+RUN pnpm build
 
-# [중요] 개발 모드에서는 아래 CMD가 실행되지만, 
-# docker-compose.dev.yml의 command가 이 설정을 덮어씌워 pnpm dev를 실행하게 됩니다.
-CMD ["pnpm", "dev", "--host"]
+# 2. 프로덕션 스테이지 (Nginx 환경에서 컴파일된 정적 파일만 서비스)
+# 👇 여기가 가장 중요합니다! 반드시 AS production 이라고 적혀 있어야 합니다.
+FROM nginx:alpine AS production
+
+# 빌드 스테이지에서 만들어진 dist 폴더의 결과물만 Nginx의 서빙 폴더로 복사
+COPY --from=build-stage /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
