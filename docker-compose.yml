@@ -1,0 +1,36 @@
+# docker-compose.yml (운영 환경 배포용)
+services:
+  # Nginx (모든 트래픽의 입구)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      # - "443:443" # 나중에 SSL 적용 시 주석 해제
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - nest-api
+      - vue-admin
+      - vue-main
+      - vue-store
+
+  nest-api:
+    build: ./nest-api
+    # 외부 포트(3000:3000) 삭제. Nginx가 알아서 내부 3000번으로 보내줌.
+    env_file:
+      - ./nest-api/.env.prod
+
+  vue-admin:
+    build:
+      context: ./vue-admin
+      target: production # Dockerfile에서 Nginx 스테이지(production)만 빌드
+
+  vue-main:
+    build:
+      context: ./vue-main
+      target: production
+
+  vue-store:
+    build:
+      context: ./vue-store
+      target: production
